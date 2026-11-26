@@ -1,0 +1,36 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build with the .NET Framework compiler that ships with Windows
+        shell: powershell
+        run: ./build.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Claude-Account-2
+          path: dist/Claude-Account-2.exe
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $hash = (Get-FileHash dist/Claude-Account-2.exe -Algorithm SHA256).Hash
+          $notes = "Download **Claude-Account-2.exe** below, put it in a permanent folder and double-click it. See the README for details.`n`nBuilt by GitHub Actions from this tag's source.`n`nSHA-256: ``$hash``"
+          gh release create "${{ github.ref_name }}" dist/Claude-Account-2.exe --title "${{ github.ref_name }}" --notes "$notes"
